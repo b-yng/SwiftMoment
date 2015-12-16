@@ -41,9 +41,6 @@ public func moment(stringDate: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
     , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
 
-    let formatter = NSDateFormatter()
-    formatter.timeZone = timeZone
-    formatter.locale = locale
     let isoFormat = "yyyy-MM-ddTHH:mm:ssZ"
 
     // The contents of the array below are borrowed
@@ -72,9 +69,22 @@ public func moment(stringDate: String
     ]
 
     for format in formats {
-        formatter.dateFormat = format
+        let formatter: NSDateFormatter
+        if let cachedFormatter = Moment.dateFormatterCache.objectForKey(format) as? NSDateFormatter {
+            formatter = cachedFormatter
+        }
+        else {
+            formatter = NSDateFormatter()
+            formatter.dateFormat = format
+        }
+        
+        formatter.timeZone = timeZone
+        formatter.locale = locale
 
         if let date = formatter.dateFromString(stringDate) {
+            // only cache the dateFormatter that validly parsed a date
+            Moment.dateFormatterCache.setObject(formatter, forKey: format)
+            
             return Moment(date: date, timeZone: timeZone, locale: locale)
         }
     }
@@ -85,8 +95,16 @@ public func moment(stringDate: String
     , dateFormat: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
     , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
-    let formatter = NSDateFormatter()
-    formatter.dateFormat = dateFormat
+        
+    let formatter: NSDateFormatter
+    if let cachedFormatter = Moment.dateFormatterCache.objectForKey(dateFormat) as? NSDateFormatter {
+        formatter = cachedFormatter
+    }
+    else {
+        formatter = NSDateFormatter()
+        formatter.dateFormat = dateFormat
+        Moment.dateFormatterCache.setObject(formatter, forKey: dateFormat)
+    }
     formatter.timeZone = timeZone
     formatter.locale = locale
     if let date = formatter.dateFromString(stringDate) {
@@ -235,6 +253,10 @@ public struct Moment: Comparable {
     let date: NSDate
     let timeZone: NSTimeZone
     let locale: NSLocale
+    
+    private static var dateFormatterCache = NSCache()
+    
+    private static var unformattedDateFormatter = NSDateFormatter()
 
     init(date: NSDate = NSDate()
         , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
@@ -264,9 +286,9 @@ public struct Moment: Comparable {
 
     /// Returns the name of the month of the current instance, in the current locale.
     public var monthName: String {
-        let formatter = NSDateFormatter()
+        let formatter = Moment.unformattedDateFormatter
         formatter.locale = locale
-        return formatter.monthSymbols[month - 1] 
+        return formatter.monthSymbols[month - 1]
     }
 
     public var day: Int {
@@ -311,8 +333,8 @@ public struct Moment: Comparable {
 
     public var weekdayName: String {
         let formatter = NSDateFormatter()
-        formatter.locale = locale
         formatter.dateFormat = "EEEE"
+        formatter.locale = locale
         formatter.timeZone = timeZone
         return formatter.stringFromDate(date)
     }
@@ -370,8 +392,16 @@ public struct Moment: Comparable {
     }
 
     public func format(dateFormat: String = "yyyy-MM-dd HH:mm:ss ZZZZ") -> String {
-        let formatter = NSDateFormatter()
-        formatter.dateFormat = dateFormat
+        
+        let formatter: NSDateFormatter
+        if let cachedFormatter = Moment.dateFormatterCache.objectForKey(dateFormat) as? NSDateFormatter {
+            formatter = cachedFormatter
+        }
+        else {
+            formatter = NSDateFormatter()
+            formatter.dateFormat = dateFormat
+            Moment.dateFormatterCache.setObject(formatter, forKey: dateFormat)
+        }
         formatter.timeZone = timeZone
         formatter.locale = locale
         return formatter.stringFromDate(date)
@@ -385,7 +415,7 @@ public struct Moment: Comparable {
         let interval = date.timeIntervalSinceDate(moment.date)
         return Duration(value: interval)
     }
-
+    
     public func add(value: Int, _ unit: TimeUnit) -> Moment {
         let components = NSDateComponents()
         switch unit {

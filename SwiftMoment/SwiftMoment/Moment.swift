@@ -69,15 +69,7 @@ public func moment(stringDate: String
     ]
 
     for format in formats {
-        let formatter: NSDateFormatter
-        if let cachedFormatter = Moment.dateFormatterCache.objectForKey(format) as? NSDateFormatter {
-            formatter = cachedFormatter
-        }
-        else {
-            formatter = NSDateFormatter()
-            formatter.dateFormat = format
-        }
-        
+        let formatter = Moment.cachedDateFormatterWithFormat(format, addIfAbsent: false)
         formatter.timeZone = timeZone
         formatter.locale = locale
 
@@ -96,15 +88,7 @@ public func moment(stringDate: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
     , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
         
-    let formatter: NSDateFormatter
-    if let cachedFormatter = Moment.dateFormatterCache.objectForKey(dateFormat) as? NSDateFormatter {
-        formatter = cachedFormatter
-    }
-    else {
-        formatter = NSDateFormatter()
-        formatter.dateFormat = dateFormat
-        Moment.dateFormatterCache.setObject(formatter, forKey: dateFormat)
-    }
+    let formatter = Moment.cachedDateFormatterWithFormat(dateFormat, addIfAbsent: true)
     formatter.timeZone = timeZone
     formatter.locale = locale
     if let date = formatter.dateFromString(stringDate) {
@@ -393,15 +377,7 @@ public struct Moment: Comparable {
 
     public func format(dateFormat: String = "yyyy-MM-dd HH:mm:ss ZZZZ") -> String {
         
-        let formatter: NSDateFormatter
-        if let cachedFormatter = Moment.dateFormatterCache.objectForKey(dateFormat) as? NSDateFormatter {
-            formatter = cachedFormatter
-        }
-        else {
-            formatter = NSDateFormatter()
-            formatter.dateFormat = dateFormat
-            Moment.dateFormatterCache.setObject(formatter, forKey: dateFormat)
-        }
+        let formatter = Moment.cachedDateFormatterWithFormat(dateFormat, addIfAbsent: true)
         formatter.timeZone = timeZone
         formatter.locale = locale
         return formatter.stringFromDate(date)
@@ -553,6 +529,22 @@ public struct Moment: Comparable {
         case .Years:
             return value * 31536000 // 365 days
         }
+    }
+    
+    private static func cachedDateFormatterWithFormat(dateFormat: String, addIfAbsent: Bool) -> NSDateFormatter {
+        let formatter: NSDateFormatter
+        if let cachedFormatter = Moment.dateFormatterCache.objectForKey(dateFormat) as? NSDateFormatter {
+            formatter = cachedFormatter
+        }
+        else {
+            formatter = NSDateFormatter()
+            formatter.dateFormat = dateFormat
+            
+            if addIfAbsent {
+                Moment.dateFormatterCache.setObject(formatter, forKey: dateFormat)
+            }
+        }
+        return formatter
     }
 }
 

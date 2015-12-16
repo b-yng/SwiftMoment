@@ -316,8 +316,7 @@ public struct Moment: Comparable {
     }
 
     public var weekdayName: String {
-        let formatter = NSDateFormatter()
-        formatter.dateFormat = "EEEE"
+        let formatter = Moment.cachedDateFormatterWithFormat("EEEE", addIfAbsent: true)
         formatter.locale = locale
         formatter.timeZone = timeZone
         return formatter.stringFromDate(date)

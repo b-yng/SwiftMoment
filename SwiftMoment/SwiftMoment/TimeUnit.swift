@@ -14,4 +14,5 @@ public enum TimeUnit : String {
     case Hours = "H"
     case Minutes = "m"
     case Seconds = "s"
+    case Milliseconds = "ms"
 }

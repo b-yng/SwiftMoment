@@ -39,8 +39,18 @@ parsed by the function, the Optional wraps a nil value.
 */
 public func moment(stringDate: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
-    , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment?
-{
+    , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
+    
+    // Iterate the cache first. It's most likely user is reusing formats, so we can avoid unecessary
+    // NSDateFormatter inits
+    for formatter in Moment.dateFormatterCache.values {
+        formatter.timeZone = timeZone
+        formatter.locale = locale
+        
+        if let date = formatter.dateFromString(stringDate) {
+            return Moment(date: date, timeZone: timeZone, locale: locale)
+        }
+    }
     
     let isoFormat = "yyyy-MM-ddTHH:mm:ssZ"
 
@@ -70,7 +80,12 @@ public func moment(stringDate: String
     ]
 
     for format in formats {
-        let formatter = Moment.cachedDateFormatterWithFormat(format, addIfAbsent: false)
+        guard Moment.dateFormatterCache[format] == nil else {
+            // we already checked cached formatters
+            continue;
+        }
+        let formatter = NSDateFormatter()
+        formatter.dateFormat = format
         formatter.timeZone = timeZone
         formatter.locale = locale
 
@@ -89,7 +104,7 @@ public func moment(stringDate: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
     , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
         
-    let formatter = Moment.cachedDateFormatterWithFormat(dateFormat, addIfAbsent: true)
+    let formatter = Moment.retrieveOrCreateDateFormatterWithFormat(dateFormat)
     formatter.timeZone = timeZone
     formatter.locale = locale
     if let date = formatter.dateFromString(stringDate) {
@@ -317,7 +332,7 @@ public struct Moment: Comparable {
     }
 
     public var weekdayName: String {
-        let formatter = Moment.cachedDateFormatterWithFormat("EEEE", addIfAbsent: true)
+        let formatter = Moment.retrieveOrCreateDateFormatterWithFormat("EEEE")
         formatter.locale = locale
         formatter.timeZone = timeZone
         return formatter.stringFromDate(date)
@@ -346,11 +361,21 @@ public struct Moment: Comparable {
         let components = cal.components(.Quarter, fromDate: date)
         return components.quarter
     }
+    
+    public var milliseconds: Int {
+        let cal = NSCalendar.currentCalendar()
+        cal.locale = locale
+        cal.timeZone = timeZone
+        let components = cal.components(.Nanosecond, fromDate: date)
+        return components.nanosecond / 1000000
+    }
 
     // Methods
 
     public func get(unit: TimeUnit) -> Int? {
         switch unit {
+        case .Milliseconds:
+            return milliseconds
         case .Seconds:
             return second
         case .Minutes:
@@ -377,7 +402,7 @@ public struct Moment: Comparable {
 
     public func format(dateFormat: String = "yyyy-MM-dd HH:mm:ss ZZZZ") -> String {
         
-        let formatter = Moment.cachedDateFormatterWithFormat(dateFormat, addIfAbsent: true)
+        let formatter = Moment.retrieveOrCreateDateFormatterWithFormat(dateFormat)
         formatter.timeZone = timeZone
         formatter.locale = locale
         return formatter.stringFromDate(date)
@@ -409,6 +434,8 @@ public struct Moment: Comparable {
             components.minute = value
         case .Seconds:
             components.second = value
+        case .Milliseconds:
+            components.nanosecond = value * 1000000
         }
         let cal = NSCalendar(calendarIdentifier: NSCalendarIdentifierGregorian)!
         cal.timeZone = NSTimeZone(abbreviation: "UTC")!
@@ -483,6 +510,8 @@ public struct Moment: Comparable {
             fallthrough
         case .Minutes:
             components.second = 0
+        case .Milliseconds:
+            components.nanosecond = 0
         }
         newDate = cal.dateFromComponents(components)
         return newDate == nil ? self : Moment(date: newDate!)
@@ -514,6 +543,8 @@ public struct Moment: Comparable {
 
     func convert(value: Double, _ unit: TimeUnit) -> Double {
         switch unit {
+        case .Milliseconds:
+            return value / 1000.0
         case .Seconds:
             return value
         case .Minutes:
@@ -531,7 +562,7 @@ public struct Moment: Comparable {
         }
     }
     
-    private static func cachedDateFormatterWithFormat(dateFormat: String, addIfAbsent: Bool) -> NSDateFormatter {
+    private static func retrieveOrCreateDateFormatterWithFormat(dateFormat: String) -> NSDateFormatter {
         let formatter: NSDateFormatter
         if let cachedFormatter = Moment.dateFormatterCache[dateFormat] {
             formatter = cachedFormatter
@@ -539,10 +570,7 @@ public struct Moment: Comparable {
         else {
             formatter = NSDateFormatter()
             formatter.dateFormat = dateFormat
-            
-            if addIfAbsent {
-                Moment.dateFormatterCache[dateFormat] = formatter
-            }
+            Moment.dateFormatterCache[dateFormat] = formatter
         }
         return formatter
     }

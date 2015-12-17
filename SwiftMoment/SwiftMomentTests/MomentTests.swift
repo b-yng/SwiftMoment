@@ -282,14 +282,20 @@ class MomentTests: XCTestCase {
         let duration = moment() - past()
         XCTAssertLessThan(1000, duration.years, "The past is really far away")
     }
-    /*
+    
     func testTimeZoneSupport() {
         let zone = NSTimeZone(abbreviation: "PST")!
-        let birthday = moment("1973-09-04 12:30:00", timeZone: zone)!
+        let dateString = "1973-09-04T12:30:00"
+        
+        guard let birthday = moment(dateString, timeZone: zone) else {
+            XCTAssert(true, "Failed to parse date string; dateString=\(dateString)")
+            return
+        }
+        
         let str = birthday.format("EE QQQQ yyyy/dd/MMMM HH:mm ZZZZ")
         XCTAssertEqual(str, "Tue 3rd quarter 1973/04/September 12:30 GMT-07:00", "A date in San Francisco")
     }
-    */
+    
     func testUTCMomentSupport() {
         let greenwich = utc()
         let str = greenwich.format("ZZZZ")

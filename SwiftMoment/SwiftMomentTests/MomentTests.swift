@@ -296,6 +296,18 @@ class MomentTests: XCTestCase {
         XCTAssertEqual(str, "Tue 3rd quarter 1973/04/September 12:30 GMT-07:00", "A date in San Francisco")
     }
     
+    func testChangeTimeZoneForFormat() {
+        // different time zones with same date string should produce different dates
+        let dateString = "1991-08-31T12:30:00"
+        let pstTimeZone = NSTimeZone(abbreviation: "PST")!
+        let pstMoment = moment(dateString, timeZone: pstTimeZone)
+        
+        let utcTimeZone = NSTimeZone(abbreviation: "UTC")!
+        let utcMoment = moment(dateString, timeZone: utcTimeZone)
+        
+        XCTAssertNotEqual(pstMoment, utcMoment)
+    }
+    
     func testUTCMomentSupport() {
         let greenwich = utc()
         let str = greenwich.format("ZZZZ")

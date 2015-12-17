@@ -39,8 +39,9 @@ parsed by the function, the Optional wraps a nil value.
 */
 public func moment(stringDate: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
-    , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
-
+    , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment?
+{
+    
     let isoFormat = "yyyy-MM-ddTHH:mm:ssZ"
 
     // The contents of the array below are borrowed
@@ -75,7 +76,7 @@ public func moment(stringDate: String
 
         if let date = formatter.dateFromString(stringDate) {
             // only cache the dateFormatter that validly parsed a date
-            Moment.dateFormatterCache.setObject(formatter, forKey: format)
+            Moment.dateFormatterCache[format] = formatter
             
             return Moment(date: date, timeZone: timeZone, locale: locale)
         }
@@ -238,7 +239,7 @@ public struct Moment: Comparable {
     let timeZone: NSTimeZone
     let locale: NSLocale
     
-    private static var dateFormatterCache = NSCache()
+    private static var dateFormatterCache = [String: NSDateFormatter]()
     
     private static var unformattedDateFormatter = NSDateFormatter()
 
@@ -532,7 +533,7 @@ public struct Moment: Comparable {
     
     private static func cachedDateFormatterWithFormat(dateFormat: String, addIfAbsent: Bool) -> NSDateFormatter {
         let formatter: NSDateFormatter
-        if let cachedFormatter = Moment.dateFormatterCache.objectForKey(dateFormat) as? NSDateFormatter {
+        if let cachedFormatter = Moment.dateFormatterCache[dateFormat] {
             formatter = cachedFormatter
         }
         else {
@@ -540,7 +541,7 @@ public struct Moment: Comparable {
             formatter.dateFormat = dateFormat
             
             if addIfAbsent {
-                Moment.dateFormatterCache.setObject(formatter, forKey: dateFormat)
+                Moment.dateFormatterCache[dateFormat] = formatter
             }
         }
         return formatter

@@ -40,18 +40,10 @@ parsed by the function, the Optional wraps a nil value.
 public func moment(stringDate: String
     , timeZone: NSTimeZone = NSTimeZone.defaultTimeZone()
     , locale: NSLocale = NSLocale.autoupdatingCurrentLocale()) -> Moment? {
-    
-    // Iterate the cache first. It's most likely user is reusing formats, so we can avoid unecessary
-    // NSDateFormatter inits
-    for formatter in Moment.dateFormatterCache.values {
-        formatter.timeZone = timeZone
-        formatter.locale = locale
-        
-        if let date = formatter.dateFromString(stringDate) {
-            return Moment(date: date, timeZone: timeZone, locale: locale)
-        }
-    }
-    
+
+    let formatter = NSDateFormatter()
+    formatter.timeZone = timeZone
+    formatter.locale = locale
     let isoFormat = "yyyy-MM-ddTHH:mm:ssZ"
 
     // The contents of the array below are borrowed
@@ -80,19 +72,9 @@ public func moment(stringDate: String
     ]
 
     for format in formats {
-        guard Moment.dateFormatterCache[format] == nil else {
-            // we already checked cached formatters
-            continue;
-        }
-        let formatter = NSDateFormatter()
         formatter.dateFormat = format
-        formatter.timeZone = timeZone
-        formatter.locale = locale
 
         if let date = formatter.dateFromString(stringDate) {
-            // only cache the dateFormatter that validly parsed a date
-            Moment.dateFormatterCache[format] = formatter
-            
             return Moment(date: date, timeZone: timeZone, locale: locale)
         }
     }
